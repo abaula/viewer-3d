@@ -8,18 +8,24 @@ impl RenderQueueBuilder {
         match app_state {
             Some(state) => create_queue_for_app_state(encoder, texture_view, state),
             // Default.
-            _ => create_green_screen(encoder, texture_view),
+            _ => create_empty_screen(encoder, texture_view, wgpu::Color::GREEN),
         }
     }
 }
 
-fn create_queue_for_app_state(encoder: &mut wgpu::CommandEncoder, texture_view: &wgpu::TextureView, _state: &AppState) {
+fn create_queue_for_app_state(encoder: &mut wgpu::CommandEncoder, texture_view: &wgpu::TextureView, state: &AppState) {
+
+    if state.visible {
+        create_empty_screen(encoder, texture_view, wgpu::Color::BLUE);
+        return;
+    }
+
     // Default
-    create_green_screen(encoder, texture_view);
+    create_empty_screen(encoder, texture_view, wgpu::Color::BLACK);
 }
 
 // Renders a GREEN screen
-fn create_green_screen(encoder: &mut wgpu::CommandEncoder, texture_view: &wgpu::TextureView,) {
+fn create_empty_screen(encoder: &mut wgpu::CommandEncoder, texture_view: &wgpu::TextureView, color: wgpu::Color) {
     // Create the renderpass which will clear the screen.
     let renderpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: None,
@@ -27,7 +33,7 @@ fn create_green_screen(encoder: &mut wgpu::CommandEncoder, texture_view: &wgpu::
             view: texture_view,
             resolve_target: None,
             ops: wgpu::Operations {
-                load: wgpu::LoadOp::Clear(wgpu::Color::GREEN),
+                load: wgpu::LoadOp::Clear(color),
                 store: wgpu::StoreOp::Store,
             },
         })],

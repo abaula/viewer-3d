@@ -27,6 +27,7 @@ pub fn run() {
     // the background.
     event_loop.set_control_flow(ControlFlow::Wait);
 
-    let mut app = App::default();
+    let mut app = App::new();
+    app.set_visible(true);
     event_loop.run_app(&mut app).unwrap();
 }

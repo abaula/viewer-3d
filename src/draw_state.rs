@@ -4,6 +4,7 @@ use crate::app_state::AppState;
 use crate::render_queue_builder::RenderQueueBuilder;
 
 pub struct DrawState {
+    render_counter: i32,
     window: Arc<Window>,
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -30,13 +31,16 @@ impl DrawState {
         let cap = surface.get_capabilities(&adapter);
         let surface_format = cap.formats[0];
 
+        let render_counter = 0;
+
         let state = DrawState {
+            render_counter,
             window,
             device,
             queue,
             size,
             surface,
-            surface_format,
+            surface_format
         };
 
         // Configure surface for the first time
@@ -72,7 +76,8 @@ impl DrawState {
     }
 
     pub fn render(&mut self, app_state: &Option<AppState>) {
-        println!("render");
+        self.render_counter += 1;
+        println!("render: {}", self.render_counter);
         // Create texture view
         let surface_texture = self
             .surface
