@@ -1,10 +1,11 @@
 use std::sync::Arc;
 use winit::window::Window;
 use crate::app_state::AppState;
-use crate::render_queue_builder::RenderQueueBuilder;
+use crate::render_queue::QueueSource;
 
 pub struct DrawState {
     render_counter: i32,
+    queue_source: Box<QueueSource>,
     window: Arc<Window>,
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -30,11 +31,12 @@ impl DrawState {
         let surface = instance.create_surface(window.clone()).unwrap();
         let cap = surface.get_capabilities(&adapter);
         let surface_format = cap.formats[0];
-
         let render_counter = 0;
+        let queue_source = Box::new(QueueSource::new());
 
         let state = DrawState {
             render_counter,
+            queue_source,
             window,
             device,
             queue,
@@ -93,7 +95,7 @@ impl DrawState {
             });
 
         let mut encoder = self.device.create_command_encoder(&Default::default());
-        RenderQueueBuilder::build_queue(&mut encoder, &texture_view, app_state);
+        self.queue_source.add_to_encoder(&mut encoder, &texture_view, app_state);
         // Submit the command in the queue to execute
         self.queue.submit([encoder.finish()]);
         self.window.pre_present_notify();

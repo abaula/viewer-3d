@@ -1,7 +1,7 @@
 mod app;
 mod draw_state;
 mod app_state;
-mod render_queue_builder;
+mod render_queue;
 
 use winit::event_loop::{ControlFlow, EventLoop};
 use crate::app::App;
