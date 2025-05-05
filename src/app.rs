@@ -37,7 +37,7 @@ impl App {
     fn request_redraw_window(&self) {
         match self.draw_state.as_ref() {
             Some(draw_state) => {
-                draw_state.get_window().request_redraw();
+                draw_state.request_redraw();
             },
             _ => {}
         }

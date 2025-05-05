@@ -51,11 +51,11 @@ impl DrawState {
         state
     }
 
-    pub fn get_window(&self) -> &Window {
-        &self.window
+    pub fn request_redraw(&self) {
+        self.window.request_redraw();
     }
 
-    pub fn configure_surface(&self) {
+    fn configure_surface(&self) {
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: self.surface_format,
@@ -72,7 +72,6 @@ impl DrawState {
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         self.size = new_size;
-
         // reconfigure the surface
         self.configure_surface();
     }
