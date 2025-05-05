@@ -1,24 +1,24 @@
 use std::sync::Arc;
 use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::ActiveEventLoop, window::{Window, WindowId}};
-use crate::draw_state::DrawState;
-use crate::app_state::AppState;
+use crate::view::View;
+use crate::model::Model;
 
 pub struct App {
-    draw_state: Option<DrawState>,
-    app_state: Option<AppState>,
+    view: Option<View>,
+    model: Option<Model>,
 }
 
 impl App {
     pub fn new() -> App {
         App {
-            draw_state: None,
-            app_state: Some(AppState::new()),
+            view: None,
+            model: Some(Model::new()),
         }
     }
 
     pub fn set_visible(&mut self, visible: bool) {
 
-        match self.app_state.as_mut() {
+        match self.model.as_mut() {
             Some(app_state) => {
 
                 if app_state.visible == visible {
@@ -35,7 +35,7 @@ impl App {
     }
 
     fn request_redraw_window(&self) {
-        match self.draw_state.as_ref() {
+        match self.view.as_ref() {
             Some(draw_state) => {
                 draw_state.request_redraw();
             },
@@ -44,16 +44,16 @@ impl App {
     }
 
     fn render(&mut self) {
-        match self.draw_state.as_mut() {
+        match self.view.as_mut() {
             Some(draw_state) => {
-                draw_state.render(&self.app_state)
+                draw_state.render(&self.model)
             },
             _ => {}
         }
     }
 
     fn resize(&mut self, size: PhysicalSize<u32>) {
-        match self.draw_state.as_mut() {
+        match self.view.as_mut() {
             Some(draw_state) => {
                 draw_state.resize(size)
             },
@@ -71,8 +71,8 @@ impl ApplicationHandler for App {
                 .unwrap(),
         );
 
-        let draw_state = pollster::block_on(DrawState::new(window.clone()));
-        self.draw_state = Some(draw_state);
+        let draw_state = pollster::block_on(View::new(window.clone()));
+        self.view = Some(draw_state);
 
         window.request_redraw();
     }

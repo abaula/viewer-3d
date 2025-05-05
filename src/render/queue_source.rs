@@ -1,4 +1,4 @@
-use crate::app_state::AppState;
+use crate::model::Model;
 
 pub struct QueueSource {
 }
@@ -8,18 +8,18 @@ impl QueueSource {
         QueueSource {}
     }
 
-    pub fn add_to_encoder(&self, encoder: &mut wgpu::CommandEncoder, texture_view: &wgpu::TextureView, app_state: &Option<AppState>) {
-        match app_state {
+    pub fn add_to_encoder(&self, encoder: &mut wgpu::CommandEncoder, texture_view: &wgpu::TextureView, model: &Option<Model>) {
+        match model {
             Some(state) => self.create_queue_for_app_state(encoder, texture_view, state),
             // Default.
             _ => self.create_empty_screen(encoder, texture_view, wgpu::Color::GREEN),
         }
     }
 
-    fn create_queue_for_app_state(&self, encoder: &mut wgpu::CommandEncoder, texture_view: &wgpu::TextureView, state: &AppState) {
+    fn create_queue_for_app_state(&self, encoder: &mut wgpu::CommandEncoder, texture_view: &wgpu::TextureView, model: &Model) {
 
-        if state.visible {
-            self.create_empty_screen(encoder, texture_view, wgpu::Color::BLUE);
+        if model.visible {
+            self.create_empty_screen(encoder, texture_view, wgpu::Color::WHITE);
             return;
         }
 
