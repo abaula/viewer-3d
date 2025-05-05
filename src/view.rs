@@ -15,26 +15,18 @@ pub struct View {
 }
 
 impl View {
-    pub async fn new(window: Arc<Window>) -> View {
+    pub async fn create(window: Arc<Window>) -> Option<View> {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
-        let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions::default())
-            .await
-            .unwrap();
-        let (device, queue) = adapter
-            .request_device(&wgpu::DeviceDescriptor::default())
-            .await
-            .unwrap();
-
+        let surface = create_surface(&instance, &window)?;
+        let adapter = create_default_adapter(&instance).await?;
+        let (device, queue) = request_default_device(&adapter).await?;
         let size = window.inner_size();
-
-        let surface = instance.create_surface(window.clone()).unwrap();
         let cap = surface.get_capabilities(&adapter);
         let surface_format = cap.formats[0];
         let render_counter = 0;
         let queue_source = Box::new(QueueSource::new());
 
-        let state = View {
+        let view = View {
             render_counter,
             queue_source,
             window,
@@ -46,9 +38,9 @@ impl View {
         };
 
         // Configure surface for the first time
-        state.configure_surface();
+        view.configure_surface();
 
-        state
+        Some(view)
     }
 
     pub fn request_redraw(&self) {
@@ -100,4 +92,38 @@ impl View {
         };
         self.surface.configure(&self.device, &surface_config);
     }
+}
+
+async fn create_default_adapter(instance: &wgpu::Instance) -> Option<wgpu::Adapter> {
+    match instance
+        .request_adapter(&wgpu::RequestAdapterOptions::default())
+        .await {
+            Ok(adapter) => Some(adapter),
+            Err(e) => {
+                eprintln!("Ошибка: {}", e);
+                None
+            },
+        }
+}
+
+fn create_surface<'a>(instance: &wgpu::Instance, window: &Arc<Window>) -> Option<wgpu::Surface<'a>> {
+    match instance.create_surface(window.clone()) {
+        Ok(surface) => Some(surface),
+        Err(e) => {
+            eprintln!("Ошибка: {}", e);
+            None
+        },
+    }
+}
+
+async fn request_default_device(adapter: &wgpu::Adapter) -> Option<(wgpu::Device, wgpu::Queue)> {
+    match adapter
+        .request_device(&wgpu::DeviceDescriptor::default())
+        .await {
+            Ok((device, queue)) => Some((device, queue)),
+            Err(e) => {
+                eprintln!("Ошибка: {}", e);
+                None
+            },
+        }
 }

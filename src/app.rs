@@ -71,10 +71,17 @@ impl ApplicationHandler for App {
                 .unwrap(),
         );
 
-        let draw_state = pollster::block_on(View::new(window.clone()));
-        self.view = Some(draw_state);
+        let view_opt = pollster::block_on(View::create(window.clone()));
 
-        window.request_redraw();
+        match view_opt {
+            Some(view) => {
+                self.view = Some(view);
+                window.request_redraw();
+            },
+            None => {
+                todo!()
+            }
+        }
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
