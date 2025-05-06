@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 #[derive(strum_macros::Display, Debug, PartialEq, Eq, Hash)]
 pub enum ShaderVertexName {
@@ -16,7 +16,7 @@ pub struct ShaderSource {
 }
 
 impl ShaderSource {
-    pub fn new(device: &wgpu::Device) -> ShaderSource {
+    pub fn new(device: &Arc<wgpu::Device>) -> ShaderSource {
         let mut vertex_shaders = HashMap::new();
         let mut fragment_shaders = HashMap::new();
 

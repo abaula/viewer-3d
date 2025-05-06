@@ -7,7 +7,7 @@ pub struct View {
     render_counter: i32,
     queue_source: Box<QueueSource>,
     window: Arc<Window>,
-    device: wgpu::Device,
+    device: Arc<wgpu::Device>,
     queue: wgpu::Queue,
     size: winit::dpi::PhysicalSize<u32>,
     surface: wgpu::Surface<'static>,
@@ -25,13 +25,14 @@ impl View {
         let cap = surface.get_capabilities(&adapter);
         let surface_format = cap.formats[0];
         let render_counter = 0;
-        let queue_source = Box::new(QueueSource::new(&device, &surface_format));
+        let device_ref = Arc::new(device);
+        let queue_source = Box::new(QueueSource::new(&device_ref, &surface_format));
 
         let view = View {
             render_counter,
             queue_source,
             window: window_ptr,
-            device,
+            device: device_ref,
             queue,
             size,
             surface,

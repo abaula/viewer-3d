@@ -1,19 +1,16 @@
+use std::sync::Arc;
 use crate::model::Model;
-use crate::render::shader::ShaderSource;
 use crate::render::pipeline::{PipelineSource, PipelineName};
 
 pub struct QueueSource {
-    shaders: ShaderSource,
-    pipelines: PipelineSource,
+    pipelines: Box<PipelineSource>,
 }
 
 impl QueueSource {
-    pub fn new(device: &wgpu::Device, texture_format: &wgpu::TextureFormat) -> QueueSource {
-        let shaders = ShaderSource::new(device); 
-        let pipelines = PipelineSource::new(device, texture_format, &shaders);
+    pub fn new(device: &Arc<wgpu::Device>, texture_format: &wgpu::TextureFormat) -> QueueSource {
+        let pipelines = Box::new(PipelineSource::new(device, texture_format));
 
         QueueSource {
-            shaders,
             pipelines,
         }
     }
@@ -55,8 +52,7 @@ impl QueueSource {
             occlusion_query_set: None,
         });
 
-        // If you wanted to call any drawing commands, they would go here.
-        renderpass.set_pipeline(&self.pipelines.pipelines[&PipelineName::Pipline1]);
+        renderpass.set_pipeline(self.pipelines.get(&PipelineName::Pipeline1).as_ref());
         renderpass.draw(0..3, 0..1);
         // End the renderpass.
         drop(renderpass);

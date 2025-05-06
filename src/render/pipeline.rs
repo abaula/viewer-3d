@@ -1,41 +1,69 @@
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, sync::Arc};
 use crate::render::shader::{ShaderSource, ShaderVertexName, ShaderFragmentName};
 
-#[derive(strum_macros::Display, Debug, PartialEq, Eq, Hash)]
+#[derive(strum_macros::Display, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum PipelineName {
-    Pipline1,
+    Pipeline1,
 }
 
 pub struct PipelineSource {
-    pub pipelines: HashMap<PipelineName, wgpu::RenderPipeline>,
+    device: Arc<wgpu::Device>,
+    texture_format: wgpu::TextureFormat,
+    shaders: ShaderSource,
+    pipelines: RefCell<HashMap<PipelineName, Arc<wgpu::RenderPipeline>>>,
 }
 
 impl PipelineSource {
-    pub fn new(device: &wgpu::Device, texture_format: &wgpu::TextureFormat, shader_source: &ShaderSource) -> PipelineSource {
-        let mut pipelines = HashMap::new();
+    pub fn new(device: &Arc<wgpu::Device>, texture_format: &wgpu::TextureFormat) -> PipelineSource {
+        let shaders = ShaderSource::new(device); 
 
+        PipelineSource {
+            device: Arc::clone(device),
+            texture_format: texture_format.clone(),
+            shaders,
+            pipelines: RefCell::new(HashMap::new()),
+        }
+    }
+
+    pub fn get(&self, key: &PipelineName) -> Arc<wgpu::RenderPipeline> {
+
+        if ! self.pipelines.borrow().contains_key(key) {
+            self.pipelines.borrow_mut().insert(key.clone(), self.create_pipeline(key));
+        }
+
+        Arc::clone(&self.pipelines.borrow()[key])
+    }
+
+    fn create_pipeline(&self, key: &PipelineName) -> Arc<wgpu::RenderPipeline> {
+        match key {
+            PipelineName::Pipeline1 => self.create_pipeline1(),
+            _ => panic!("Неизвестный pipeline id: {}.", key.to_string()),
+        }
+    }
+
+    fn create_pipeline1(&self) -> Arc<wgpu::RenderPipeline> {
         let render_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
                 bind_group_layouts: &[],
                 push_constant_ranges: &[],
             });
-
+    
         let pipeline =
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            self.device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some("Render Pipeline"),
                 layout: Some(&render_pipeline_layout),
                 vertex: wgpu::VertexState {
-                    module: &shader_source.vertex_shaders[&ShaderVertexName::Vertex1],
+                    module: &self.shaders.vertex_shaders[&ShaderVertexName::Vertex1],
                     entry_point: Some("main"),
                     buffers: &[],
                     compilation_options: Default::default(),
                 },
                 fragment: Some(wgpu::FragmentState {
-                    module: &shader_source.fragment_shaders[&ShaderFragmentName::Fragment1],
+                    module: &self.shaders.fragment_shaders[&ShaderFragmentName::Fragment1],
                     entry_point: Some("main"),
                     targets: &[Some(wgpu::ColorTargetState {
-                        format: texture_format.clone(),
+                        format: self.texture_format.clone(),
                         blend: Some(wgpu::BlendState::REPLACE),
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
@@ -61,11 +89,7 @@ impl PipelineSource {
                 multiview: None,
                 cache: None,
             });
-
-        pipelines.insert(PipelineName::Pipline1, pipeline);
-
-        PipelineSource {
-            pipelines
-        }
-    }
+    
+        Arc::new(pipeline)
+    }    
 }
