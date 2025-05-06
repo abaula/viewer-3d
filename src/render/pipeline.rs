@@ -37,7 +37,6 @@ impl PipelineSource {
     fn create_pipeline(&self, key: &PipelineName) -> Arc<wgpu::RenderPipeline> {
         match key {
             PipelineName::Pipeline1 => self.create_pipeline1(),
-            _ => panic!("Неизвестный pipeline id: {}.", key.to_string()),
         }
     }
 
@@ -51,7 +50,7 @@ impl PipelineSource {
     
         let pipeline =
             self.device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("Render Pipeline"),
+                label: Some(PipelineName::Pipeline1.to_string().as_str()),
                 layout: Some(&render_pipeline_layout),
                 vertex: wgpu::VertexState {
                     module: &self.shaders.vertex_shaders[&ShaderVertexName::Vertex1],
