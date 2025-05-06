@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::ActiveEventLoop, window::{Window, WindowId}};
 use crate::view::View;
 use crate::model::Model;
@@ -36,8 +35,8 @@ impl App {
 
     fn request_redraw_window(&self) {
         match self.view.as_ref() {
-            Some(draw_state) => {
-                draw_state.request_redraw();
+            Some(view) => {
+                view.request_redraw();
             },
             _ => {}
         }
@@ -64,19 +63,12 @@ impl App {
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        // Create window object
-        let window = Arc::new(
-            event_loop
-                .create_window(Window::default_attributes())
-                .unwrap(),
-        );
-
-        let view_opt = pollster::block_on(View::create(window.clone()));
+        let view_opt = create_view(event_loop);
 
         match view_opt {
             Some(view) => {
                 self.view = Some(view);
-                window.request_redraw();
+                self.request_redraw_window();
             },
             None => {
                 todo!()
@@ -100,5 +92,21 @@ impl ApplicationHandler for App {
             }
             _ => (),
         }
+    }
+}
+
+fn create_view(event_loop: &ActiveEventLoop) -> Option<View> {
+    let window= create_window(event_loop)?;
+    pollster::block_on(View::create(window))
+}
+
+fn create_window(event_loop: &ActiveEventLoop) -> Option<Window> {
+    match event_loop
+        .create_window(Window::default_attributes()) {
+            Ok(window) => Some(window),
+            Err(e) => {
+                eprintln!("Ошибка: {}", e);
+                None
+            }
     }
 }

@@ -15,12 +15,13 @@ pub struct View {
 }
 
 impl View {
-    pub async fn create(window: Arc<Window>) -> Option<View> {
+    pub async fn create(window: Window) -> Option<View> {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
-        let surface = create_surface(&instance, &window)?;
+        let window_ptr = Arc::new(window);
+        let surface = create_surface(&instance, &window_ptr)?;
         let adapter = create_default_adapter(&instance).await?;
         let (device, queue) = request_default_device(&adapter).await?;
-        let size = window.inner_size();
+        let size = window_ptr.inner_size();
         let cap = surface.get_capabilities(&adapter);
         let surface_format = cap.formats[0];
         let render_counter = 0;
@@ -29,7 +30,7 @@ impl View {
         let view = View {
             render_counter,
             queue_source,
-            window,
+            window: window_ptr,
             device,
             queue,
             size,
