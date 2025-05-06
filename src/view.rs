@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use winit::window::Window;
 use crate::model::Model;
-use crate::render::queue_source::QueueSource;
+use crate::render::queue::QueueSource;
 
 pub struct View {
     render_counter: i32,
@@ -25,7 +25,7 @@ impl View {
         let cap = surface.get_capabilities(&adapter);
         let surface_format = cap.formats[0];
         let render_counter = 0;
-        let queue_source = Box::new(QueueSource::new());
+        let queue_source = Box::new(QueueSource::new(&device, &surface_format));
 
         let view = View {
             render_counter,
@@ -72,7 +72,7 @@ impl View {
             });
 
         let mut encoder = self.device.create_command_encoder(&Default::default());
-        self.queue_source.add_to_encoder(&mut encoder, &texture_view, model);
+        self.queue_source.add_command_queue(&mut encoder, &texture_view, model);
         // Submit the command in the queue to execute
         self.queue.submit([encoder.finish()]);
         self.window.pre_present_notify();
