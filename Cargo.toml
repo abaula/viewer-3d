@@ -17,4 +17,5 @@ wgpu = "25.0.0"
 winit = { version = "0.30.8", features = ["android-native-activity"] }
 strum = "0.27"
 strum_macros = "0.27"
+bytemuck = { version = "1.16", features = [ "derive" ] }
 

@@ -1,5 +1,5 @@
 use std::{cell::RefCell, collections::HashMap, sync::Arc};
-use crate::render::shader::{ShaderSource, ShaderVertexName, ShaderFragmentName};
+use crate::{model::Vertex, render::shader::{ShaderFragmentName, ShaderSource, ShaderVertexName}};
 
 #[derive(strum_macros::Display, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum PipelineName {
@@ -7,15 +7,15 @@ pub enum PipelineName {
 }
 
 pub struct PipelineSource {
-    device: Arc<wgpu::Device>,
-    texture_format: wgpu::TextureFormat,
-    shaders: ShaderSource,
+    pub device: Arc<wgpu::Device>,
+    pub texture_format: wgpu::TextureFormat,
+    pub shaders: ShaderSource,
     pipelines: RefCell<HashMap<PipelineName, Arc<wgpu::RenderPipeline>>>,
 }
 
 impl PipelineSource {
     pub fn new(device: &Arc<wgpu::Device>, texture_format: &wgpu::TextureFormat) -> PipelineSource {
-        let shaders = ShaderSource::new(device); 
+        let shaders = ShaderSource::new(device);
 
         PipelineSource {
             device: Arc::clone(device),
@@ -47,7 +47,7 @@ impl PipelineSource {
                 bind_group_layouts: &[],
                 push_constant_ranges: &[],
             });
-    
+
         let pipeline =
             self.device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some(PipelineName::Pipeline1.to_string().as_str()),
@@ -55,7 +55,7 @@ impl PipelineSource {
                 vertex: wgpu::VertexState {
                     module: &self.shaders.vertex_shaders[&ShaderVertexName::Vertex1],
                     entry_point: Some("main"),
-                    buffers: &[],
+                    buffers: &[Vertex::desc()],
                     compilation_options: Default::default(),
                 },
                 fragment: Some(wgpu::FragmentState {
@@ -63,7 +63,10 @@ impl PipelineSource {
                     entry_point: Some("main"),
                     targets: &[Some(wgpu::ColorTargetState {
                         format: self.texture_format.clone(),
-                        blend: Some(wgpu::BlendState::REPLACE),
+                        blend: Some(wgpu::BlendState {
+                            color: wgpu::BlendComponent::REPLACE,
+                            alpha: wgpu::BlendComponent::REPLACE,
+                        }),
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
                     compilation_options: Default::default(),
@@ -88,7 +91,7 @@ impl PipelineSource {
                 multiview: None,
                 cache: None,
             });
-    
+
         Arc::new(pipeline)
-    }    
+    }
 }
