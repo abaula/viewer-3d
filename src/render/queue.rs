@@ -61,8 +61,15 @@ impl QueueSource {
     fn add_model_render_pass(&self, encoder: &mut wgpu::CommandEncoder, texture_view: &wgpu::TextureView, model: &Model) {
 
         let device = &*self.pipelines.device;
-        let vertices = &*model.vertices.borrow();
-        let indices = &*model.indices.borrow();
+        let faces = &*model.faces.borrow();
+        let vertices1 = &faces[0].vertices;
+        let indices1 = &faces[0].indices;
+        
+        let vertices2 = &faces[1].vertices;
+        let indices2 = &faces[1].indices;
+        
+        let vertices = &[vertices1.as_slice(), vertices2.as_slice()].concat();
+        let indices = &[indices1.as_slice(), indices2.as_slice()].concat();
 
         let vertex_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
@@ -78,8 +85,10 @@ impl QueueSource {
             usage: wgpu::BufferUsages::INDEX,
         });
 
+        let num_indices1 = indices1.len() as u32;
+        //let num_indices2 = indices2.len() as u32;
+        let num_vertices1 = vertices1.len() as i32;
         let num_indices = indices.len() as u32;
-
 
         // Create the renderpass which will clear the screen.
         let mut renderpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -101,7 +110,10 @@ impl QueueSource {
 
         renderpass.set_vertex_buffer(0, vertex_buffer.slice(..));
         renderpass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-        renderpass.draw_indexed(0..num_indices, 0, 0..1);
+
+
+        renderpass.draw_indexed(0..num_indices1, 0, 0..1);
+        renderpass.draw_indexed(num_indices1..num_indices, num_vertices1, 0..1);
 
         // End the renderpass.
         drop(renderpass);
