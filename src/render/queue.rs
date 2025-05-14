@@ -90,16 +90,24 @@ impl QueueSource {
         let num_vertices1 = vertices1.len() as i32;
         let num_indices = indices.len() as u32;
 
-        // Create the renderpass which will clear the screen.
         let mut renderpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: texture_view,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(QueueSource::get_bg_color(model)),
-                    store: wgpu::StoreOp::Store,
-                },
+                    // don't clear texture_view, use it as is.
+                    load: wgpu::LoadOp::Load,
+                    // ...or clear it with the color
+                    //load: wgpu::LoadOp::Clear(QueueSource::get_bg_color(model)),
+                    //store: wgpu::StoreOp::Store,
+                    /*
+                      wgpu::StoreOp::Discard позволяет отказаться от сохранения результата 
+                      render pass для attachment, делая его содержимое неинициализированным. 
+                      Это полезно для оптимизации, если данные не нужны в дальнейшем.
+                     */
+                    store: wgpu::StoreOp::Discard,
+                }, 
             })],
             depth_stencil_attachment: None,
             timestamp_writes: None,
