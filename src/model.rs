@@ -62,53 +62,74 @@ impl Model {
         [
             Face {
                 vertices: Model::create_vertices1(),
-                indices: Model::create_indices1()
+                indices: Model::create_indices1(),
             },
             Face {
                 vertices: Model::create_vertices2(),
-                indices: Model::create_indices2()
-            }
-        ].to_vec()
+                indices: Model::create_indices2(),
+            },
+        ]
+        .to_vec()
     }
 
-    fn create_vertices1() -> Vec<Vertex>
-    {
+    fn create_vertices1() -> Vec<Vertex> {
         [
-            Vertex { position: [-0.0868241, 0.49240386, 0.0], color: Model::create_color([0.15, 0.0, 0.5]) }, // A
-            Vertex { position: [-0.49513406, 0.06958647, 0.0], color: Model::create_color([0.5, 0.0, 0.15]) }, // B
-            Vertex { position: [-0.21918549, -0.44939706, 0.0], color: Model::create_color([0.15, 0.10, 0.1]) }, // C
-            Vertex { position: [0.35966998, -0.3473291, 0.0], color: Model::create_color([0.2, 0.5, 0.5]) }, // D
-            Vertex { position: [0.44147372, 0.2347359, 0.0], color: Model::create_color([0.5, 0.2, 0.1]) }, // E
-        ].to_vec()
+            Vertex {
+                position: [-0.0868241, 0.49240386, 0.0],
+                color: Model::create_color([0.15, 0.0, 0.5]),
+            }, // A
+            Vertex {
+                position: [-0.49513406, 0.06958647, 0.0],
+                color: Model::create_color([0.5, 0.0, 0.15]),
+            }, // B
+            Vertex {
+                position: [-0.21918549, -0.44939706, 0.0],
+                color: Model::create_color([0.15, 0.10, 0.1]),
+            }, // C
+            Vertex {
+                position: [0.35966998, -0.3473291, 0.0],
+                color: Model::create_color([0.2, 0.5, 0.5]),
+            }, // D
+            Vertex {
+                position: [0.44147372, 0.2347359, 0.0],
+                color: Model::create_color([0.5, 0.2, 0.1]),
+            }, // E
+        ]
+        .to_vec()
     }
 
-    fn create_indices1() -> Vec<u16>
-    {
-        [
-            0, 1, 4,
-            1, 2, 4,
-            2, 3, 4,
-        ].to_vec()
+    fn create_indices1() -> Vec<u16> {
+        [0, 1, 4, 1, 2, 4, 2, 3, 4].to_vec()
     }
 
-    fn create_vertices2() -> Vec<Vertex>
-    {
+    fn create_vertices2() -> Vec<Vertex> {
         [
-            Vertex { position: [-0.2868241, 0.49240386, 0.0], color: Model::create_color([0.1, 0.1, 0.5]) }, // A
-            Vertex { position: [-0.69513406, 0.14958647, 0.0], color: Model::create_color([0.1, 0.2, 0.15]) }, // B
-            Vertex { position: [-0.41918549, -0.44939706, 0.0], color: Model::create_color([0.5, 0.3, 0.1]) }, // C
-            Vertex { position: [0.15966998, -0.3473291, 0.0], color: Model::create_color([0.9, 0.2, 0.5]) }, // D
-            Vertex { position: [0.24147372, 0.2347359, 0.0], color: Model::create_color([0.9, 0.1, 0.9]) }, // E
-        ].to_vec()
+            Vertex {
+                position: [-0.2868241, 0.49240386, 0.0],
+                color: Model::create_color([0.1, 0.1, 0.5]),
+            }, // A
+            Vertex {
+                position: [-0.69513406, 0.14958647, 0.0],
+                color: Model::create_color([0.1, 0.2, 0.15]),
+            }, // B
+            Vertex {
+                position: [-0.41918549, -0.44939706, 0.0],
+                color: Model::create_color([0.5, 0.3, 0.1]),
+            }, // C
+            Vertex {
+                position: [0.15966998, -0.3473291, 0.0],
+                color: Model::create_color([0.9, 0.2, 0.5]),
+            }, // D
+            Vertex {
+                position: [0.24147372, 0.2347359, 0.0],
+                color: Model::create_color([0.9, 0.1, 0.9]),
+            }, // E
+        ]
+        .to_vec()
     }
 
-    fn create_indices2() -> Vec<u16>
-    {
-        [
-            0, 1, 4,
-            1, 2, 4,
-            2, 3, 4,
-        ].to_vec()
+    fn create_indices2() -> Vec<u16> {
+        [0, 1, 4, 1, 2, 4, 2, 3, 4].to_vec()
     }
 
     fn create_color(values: [f32; 3]) -> Color {

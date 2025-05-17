@@ -1,17 +1,17 @@
+use crate::model::Model;
+use crate::render::render_manager::RenderManager;
 use std::sync::Arc;
 use winit::window::Window;
-use crate::model::Model;
-use crate::render::queue::QueueSource;
 
 pub struct View {
     render_counter: i32,
-    queue_source: Box<QueueSource>,
     window: Arc<Window>,
     device: Arc<wgpu::Device>,
     queue: wgpu::Queue,
     size: winit::dpi::PhysicalSize<u32>,
     surface: wgpu::Surface<'static>,
     surface_format: wgpu::TextureFormat,
+    render_manager: RenderManager,
 }
 
 impl View {
@@ -26,17 +26,17 @@ impl View {
         let surface_format = cap.formats[0];
         let render_counter = 0;
         let device_ref = Arc::new(device);
-        let queue_source = Box::new(QueueSource::new(&device_ref, &surface_format));
+        let render_manager = RenderManager::new(&device_ref);
 
         let view = View {
             render_counter,
-            queue_source,
             window: window_ptr,
             device: device_ref,
             queue,
             size,
             surface,
-            surface_format
+            surface_format,
+            render_manager,
         };
 
         // Configure surface for the first time
@@ -58,11 +58,14 @@ impl View {
     pub fn render(&mut self, model: &Option<Model>) {
         self.render_counter += 1;
         println!("render: {}", self.render_counter);
-        // Create texture view
+
+        // Create surface texture
         let surface_texture = self
             .surface
             .get_current_texture()
             .expect("failed to acquire next swapchain texture");
+
+        // Create texture view
         let texture_view = surface_texture
             .texture
             .create_view(&wgpu::TextureViewDescriptor {
@@ -72,12 +75,18 @@ impl View {
                 ..Default::default()
             });
 
-        let mut encoder = self.device.create_command_encoder(&Default::default());
-        self.queue_source.add_command_queue(&mut encoder, &texture_view, model);
-        // Submit the command in the queue to execute
-        self.queue.submit([encoder.finish()]);
-        self.window.pre_present_notify();
-        surface_texture.present();
+        let buffers =
+            self.render_manager
+                .create_command_buffers(&texture_view, &self.surface_format, model);
+
+        match buffers {
+            Some(commands) => {
+                self.queue.submit(commands);
+                self.window.pre_present_notify();
+                surface_texture.present();
+            }
+            _ => {}
+        }
     }
 
     fn configure_surface(&self) {
@@ -99,33 +108,38 @@ impl View {
 async fn create_default_adapter(instance: &wgpu::Instance) -> Option<wgpu::Adapter> {
     match instance
         .request_adapter(&wgpu::RequestAdapterOptions::default())
-        .await {
-            Ok(adapter) => Some(adapter),
-            Err(e) => {
-                eprintln!("Ошибка: {}", e);
-                None
-            },
+        .await
+    {
+        Ok(adapter) => Some(adapter),
+        Err(e) => {
+            eprintln!("Ошибка: {}", e);
+            None
         }
+    }
 }
 
-fn create_surface<'a>(instance: &wgpu::Instance, window: &Arc<Window>) -> Option<wgpu::Surface<'a>> {
+fn create_surface<'a>(
+    instance: &wgpu::Instance,
+    window: &Arc<Window>,
+) -> Option<wgpu::Surface<'a>> {
     match instance.create_surface(window.clone()) {
         Ok(surface) => Some(surface),
         Err(e) => {
             eprintln!("Ошибка: {}", e);
             None
-        },
+        }
     }
 }
 
 async fn request_default_device(adapter: &wgpu::Adapter) -> Option<(wgpu::Device, wgpu::Queue)> {
     match adapter
         .request_device(&wgpu::DeviceDescriptor::default())
-        .await {
-            Ok((device, queue)) => Some((device, queue)),
-            Err(e) => {
-                eprintln!("Ошибка: {}", e);
-                None
-            },
+        .await
+    {
+        Ok((device, queue)) => Some((device, queue)),
+        Err(e) => {
+            eprintln!("Ошибка: {}", e);
+            None
         }
+    }
 }

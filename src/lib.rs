@@ -1,10 +1,10 @@
 mod app;
 mod model;
-mod view;
 mod render;
+mod view;
 
-use winit::event_loop::{ControlFlow, EventLoop};
 use crate::app::App;
+use winit::event_loop::{ControlFlow, EventLoop};
 
 pub fn run() {
     // wgpu uses `log` for all of our logging, so we initialize a logger with the `env_logger` crate.

@@ -1,6 +1,12 @@
-use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::ActiveEventLoop, window::{Window, WindowId}};
-use crate::view::View;
 use crate::model::Model;
+use crate::view::View;
+use winit::{
+    application::ApplicationHandler,
+    dpi::PhysicalSize,
+    event::WindowEvent,
+    event_loop::ActiveEventLoop,
+    window::{Window, WindowId},
+};
 
 pub struct App {
     view: Option<View>,
@@ -16,10 +22,8 @@ impl App {
     }
 
     pub fn set_visible(&mut self, visible: bool) {
-
         match self.model.as_mut() {
             Some(app_state) => {
-
                 if app_state.visible == visible {
                     return;
                 }
@@ -28,7 +32,7 @@ impl App {
                 app_state.visible = visible;
                 // Redraw.
                 self.request_redraw_window();
-            },
+            }
             _ => {}
         }
     }
@@ -37,25 +41,21 @@ impl App {
         match self.view.as_ref() {
             Some(view) => {
                 view.request_redraw();
-            },
+            }
             _ => {}
         }
     }
 
     fn render(&mut self) {
         match self.view.as_mut() {
-            Some(draw_state) => {
-                draw_state.render(&self.model)
-            },
+            Some(draw_state) => draw_state.render(&self.model),
             _ => {}
         }
     }
 
     fn resize(&mut self, size: PhysicalSize<u32>) {
         match self.view.as_mut() {
-            Some(draw_state) => {
-                draw_state.resize(size)
-            },
+            Some(draw_state) => draw_state.resize(size),
             _ => {}
         }
     }
@@ -69,7 +69,7 @@ impl ApplicationHandler for App {
             Some(view) => {
                 self.view = Some(view);
                 self.request_redraw_window();
-            },
+            }
             None => {
                 todo!()
             }
@@ -96,17 +96,16 @@ impl ApplicationHandler for App {
 }
 
 fn create_view(event_loop: &ActiveEventLoop) -> Option<View> {
-    let window= create_window(event_loop)?;
+    let window = create_window(event_loop)?;
     pollster::block_on(View::create(window))
 }
 
 fn create_window(event_loop: &ActiveEventLoop) -> Option<Window> {
-    match event_loop
-        .create_window(Window::default_attributes()) {
-            Ok(window) => Some(window),
-            Err(e) => {
-                eprintln!("Ошибка: {}", e);
-                None
-            }
+    match event_loop.create_window(Window::default_attributes()) {
+        Ok(window) => Some(window),
+        Err(e) => {
+            eprintln!("Ошибка: {}", e);
+            None
+        }
     }
 }
