@@ -2,7 +2,7 @@ use crate::{
     model::{Model, Vertex},
     render::shader::{ShaderFragmentName, ShaderSource, ShaderVertexName},
 };
-use std::{ops::Range, sync::Arc};
+use std::{cell::RefCell, ops::Range, sync::Arc};
 use wgpu::util::DeviceExt;
 
 #[derive(Clone, Debug)]
@@ -22,41 +22,68 @@ impl DrawIndexedInfo {
 
 #[derive(Clone, Debug)]
 struct RenderData {
-    vertices: Vec<Vertex>,
-    indices: Vec<u16>,
+    vertex_buffer: wgpu::Buffer,
+    index_buffer: wgpu::Buffer,
     instances: Range<u32>,
     draw_info: Vec<DrawIndexedInfo>,
+    bg_color: wgpu::Color,
 }
 
 impl RenderData {
-    fn build(model: &Model) -> RenderData {
+    fn build(device: &Arc<wgpu::Device>, model: &Model) -> RenderData {
+        let mut vertices: Vec<Vertex> = Vec::new();
+        let mut indices: Vec<u16> = Vec::new();
+        let mut draw_info = Vec::new();
+
         let faces = &*model.faces.borrow();
-        let vertices1 = &faces[0].vertices;
-        let indices1 = &faces[0].indices;
+        let mut last_index = 0_u32;
+        let mut next_index;
+        let mut last_vertex = 0;
 
-        let vertices2 = &faces[1].vertices;
-        let indices2 = &faces[1].indices;
-
-        let vertices = [vertices1.as_slice(), vertices2.as_slice()].concat();
-        let indices = [indices1.as_slice(), indices2.as_slice()].concat();
-
-        let num_indices1 = indices1.len() as u32;
-        let num_vertices1 = vertices1.len() as i32;
-        let num_indices = indices.len() as u32;
-
-        let draw_info = [
-            DrawIndexedInfo::new(0, 0..num_indices1),
-            DrawIndexedInfo::new(num_vertices1, num_indices1..num_indices),
-        ]
-        .to_vec();
+        for face in faces {
+            vertices.extend(&face.vertices);
+            indices.extend(&face.indices);
+            next_index = last_index + face.indices.len() as u32;
+            let draw_indexed_info = DrawIndexedInfo::new(last_vertex, last_index..next_index);
+            draw_info.push(draw_indexed_info);
+            last_index = next_index;
+            last_vertex += face.vertices.len() as i32;
+        }
 
         let instances = 0..1;
 
+        let vertex_buffer = device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: bytemuck::cast_slice(&vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+
+        let index_buffer = device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Index Buffer"),
+                contents: bytemuck::cast_slice(&indices),
+                usage: wgpu::BufferUsages::INDEX,
+            });
+
+        let bg_color = RenderData::get_bg_color(model);
+
         RenderData {
-            vertices,
-            indices,
+            vertex_buffer,
+            index_buffer,
             draw_info,
             instances,
+            bg_color,
+        }
+    }
+
+    fn get_bg_color(model: &Model) -> wgpu::Color {
+        let color = model.bg_color.borrow();
+        wgpu::Color {
+            r: color.r as f64,
+            g: color.g as f64,
+            b: color.b as f64,
+            a: color.a as f64,
         }
     }
 }
@@ -64,13 +91,15 @@ impl RenderData {
 pub struct RenderManager {
     device: Arc<wgpu::Device>,
     shaders: ShaderSource,
+    render_data: RefCell<Option<RenderData>>,
 }
 
 impl RenderManager {
-    pub fn new(device: &Arc<wgpu::Device>) -> RenderManager {
+    pub fn new(device: &Arc<wgpu::Device>,) -> RenderManager {
         RenderManager {
             device: Arc::clone(device),
             shaders: ShaderSource::new(device),
+            render_data: RefCell::new(None),
         }
     }
 
@@ -127,23 +156,8 @@ impl RenderManager {
         model: &Model,
     ) -> Option<Vec<wgpu::CommandBuffer>> {
         let mut encoder = self.device.create_command_encoder(&Default::default());
-        let render_data = RenderData::build(model);
-
-        let vertex_buffer = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(&render_data.vertices),
-                usage: wgpu::BufferUsages::VERTEX,
-            });
-
-        let index_buffer = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(&render_data.indices),
-                usage: wgpu::BufferUsages::INDEX,
-            });
+        let render_data_ref = self.get_render_data(model).borrow();
+        let render_data = render_data_ref.as_ref().unwrap();
 
         let mut renderpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
@@ -152,9 +166,9 @@ impl RenderManager {
                 resolve_target: None,
                 ops: wgpu::Operations {
                     // don't clear texture_view, use it as is.
-                    load: wgpu::LoadOp::Load,
+                    //load: wgpu::LoadOp::Load,
                     // ...or clear it with the color
-                    //load: wgpu::LoadOp::Clear(QueueSource::get_bg_color(model)),
+                    load: wgpu::LoadOp::Clear(render_data.bg_color.clone()),
                     store: wgpu::StoreOp::Store,
                 },
             })],
@@ -166,8 +180,8 @@ impl RenderManager {
         let pipline = self.get_pipline(texture_format);
         renderpass.set_pipeline(&pipline);
 
-        renderpass.set_vertex_buffer(0, vertex_buffer.slice(..));
-        renderpass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        renderpass.set_vertex_buffer(0, render_data.vertex_buffer.slice(..));
+        renderpass.set_index_buffer(render_data.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
 
         for draw_info in &render_data.draw_info {
             renderpass.draw_indexed(
@@ -184,6 +198,16 @@ impl RenderManager {
         commands.push(encoder.finish());
 
         Some(commands)
+    }
+
+    fn get_render_data(&self, model: &Model,) -> &RefCell<Option<RenderData>> {
+
+        let mut value = self.render_data.borrow_mut();
+        value.get_or_insert_with(|| {
+            RenderData::build(&self.device, model)
+        });
+
+        &self.render_data
     }
 
     fn get_pipline(&self, texture_format: &wgpu::TextureFormat) -> wgpu::RenderPipeline {
