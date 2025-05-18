@@ -50,8 +50,6 @@ impl RenderData {
             last_vertex += face.vertices.len() as i32;
         }
 
-        let instances = 0..1;
-
         let vertex_buffer = device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Vertex Buffer"),
@@ -67,6 +65,7 @@ impl RenderData {
             });
 
         let bg_color = RenderData::get_bg_color(model);
+        let instances = 0..1;
 
         RenderData {
             vertex_buffer,
@@ -168,7 +167,7 @@ impl RenderManager {
                     // don't clear texture_view, use it as is.
                     //load: wgpu::LoadOp::Load,
                     // ...or clear it with the color
-                    load: wgpu::LoadOp::Clear(render_data.bg_color.clone()),
+                    load: wgpu::LoadOp::Clear(render_data.bg_color),
                     store: wgpu::StoreOp::Store,
                 },
             })],
@@ -201,8 +200,8 @@ impl RenderManager {
     }
 
     fn get_render_data(&self, model: &Model,) -> &RefCell<Option<RenderData>> {
-
         let mut value = self.render_data.borrow_mut();
+        
         value.get_or_insert_with(|| {
             RenderData::build(&self.device, model)
         });
