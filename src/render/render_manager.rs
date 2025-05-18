@@ -123,7 +123,6 @@ impl RenderManager {
         let config = surface_config_ref.as_ref().unwrap();
 
         let size = wgpu::Extent3d {
-            // 2.
             width: config.width.max(1),
             height: config.height.max(1),
             depth_or_array_layers: 1,
@@ -135,7 +134,7 @@ impl RenderManager {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: Self::DEPTH_FORMAT,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT // 3.
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                 | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
         };
