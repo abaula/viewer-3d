@@ -23,13 +23,13 @@ impl App {
 
     pub fn set_visible(&mut self, visible: bool) {
         match self.model.as_mut() {
-            Some(app_state) => {
-                if app_state.visible == visible {
+            Some(model) => {
+                if model.visible == visible {
                     return;
                 }
 
                 // Set new visible value.
-                app_state.visible = visible;
+                model.visible = visible;
                 // Redraw.
                 self.request_redraw_window();
             }
@@ -48,14 +48,14 @@ impl App {
 
     fn render(&mut self) {
         match self.view.as_mut() {
-            Some(draw_state) => draw_state.render(&self.model),
+            Some(view) => view.render(&self.model),
             _ => {}
         }
     }
 
     fn resize(&mut self, size: PhysicalSize<u32>) {
         match self.view.as_mut() {
-            Some(draw_state) => draw_state.resize(size),
+            Some(view) => view.resize(size),
             _ => {}
         }
     }
@@ -80,6 +80,10 @@ impl ApplicationHandler for App {
         match event {
             WindowEvent::CloseRequested => {
                 println!("The close button was pressed; stopping");
+                /* match &self.view {
+                    Some(view) => view.destroy(),
+                    None => {}
+                }; */
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {

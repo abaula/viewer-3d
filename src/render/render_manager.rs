@@ -50,19 +50,17 @@ impl RenderData {
             last_vertex += face.vertices.len() as i32;
         }
 
-        let vertex_buffer = device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(&vertices),
-                usage: wgpu::BufferUsages::VERTEX,
-            });
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Vertex Buffer"),
+            contents: bytemuck::cast_slice(&vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
 
-        let index_buffer = device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(&indices),
-                usage: wgpu::BufferUsages::INDEX,
-            });
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Index Buffer"),
+            contents: bytemuck::cast_slice(&indices),
+            usage: wgpu::BufferUsages::INDEX,
+        });
 
         let bg_color = RenderData::get_bg_color(model);
         let instances = 0..1;
@@ -74,6 +72,11 @@ impl RenderData {
             instances,
             bg_color,
         }
+    }
+
+    pub fn destroy(&self) {
+        self.index_buffer.destroy();
+        self.vertex_buffer.destroy();
     }
 
     fn get_bg_color(model: &Model) -> wgpu::Color {
@@ -91,15 +94,54 @@ pub struct RenderManager {
     device: Arc<wgpu::Device>,
     shaders: ShaderSource,
     render_data: RefCell<Option<RenderData>>,
+    depth_texture_view: RefCell<Option<wgpu::TextureView>>,
 }
 
 impl RenderManager {
-    pub fn new(device: &Arc<wgpu::Device>,) -> RenderManager {
+    pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float; // 1.
+
+    pub fn new(device: &Arc<wgpu::Device>) -> RenderManager {
         RenderManager {
             device: Arc::clone(device),
             shaders: ShaderSource::new(device),
             render_data: RefCell::new(None),
+            depth_texture_view: RefCell::new(None),
         }
+    }
+
+    pub fn destroy(&self) {
+        let render_data_ref = self.render_data.borrow();
+        let render_data = render_data_ref.as_ref().unwrap();
+        render_data.destroy();
+    }
+
+    pub fn create_depth_texture(
+        &self,
+        surface_config: &RefCell<Option<wgpu::SurfaceConfiguration>>,
+    ) {
+        let surface_config_ref = surface_config.borrow();
+        let config = surface_config_ref.as_ref().unwrap();
+
+        let size = wgpu::Extent3d {
+            // 2.
+            width: config.width.max(1),
+            height: config.height.max(1),
+            depth_or_array_layers: 1,
+        };
+        let desc = wgpu::TextureDescriptor {
+            label: Some("depth_texture"),
+            size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: Self::DEPTH_FORMAT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT // 3.
+                | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        };
+        let texture = self.device.create_texture(&desc);
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        self.depth_texture_view.replace(Some(view));
     }
 
     pub fn create_command_buffers(
@@ -155,8 +197,12 @@ impl RenderManager {
         model: &Model,
     ) -> Option<Vec<wgpu::CommandBuffer>> {
         let mut encoder = self.device.create_command_encoder(&Default::default());
+
         let render_data_ref = self.get_render_data(model).borrow();
         let render_data = render_data_ref.as_ref().unwrap();
+
+        let depth_texture_view_ref = self.depth_texture_view.borrow();
+        let depth_texture_view = depth_texture_view_ref.as_ref().unwrap();
 
         let mut renderpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
@@ -171,7 +217,14 @@ impl RenderManager {
                     store: wgpu::StoreOp::Store,
                 },
             })],
-            depth_stencil_attachment: None,
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: depth_texture_view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
             timestamp_writes: None,
             occlusion_query_set: None,
         });
@@ -180,7 +233,10 @@ impl RenderManager {
         renderpass.set_pipeline(&pipline);
 
         renderpass.set_vertex_buffer(0, render_data.vertex_buffer.slice(..));
-        renderpass.set_index_buffer(render_data.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        renderpass.set_index_buffer(
+            render_data.index_buffer.slice(..),
+            wgpu::IndexFormat::Uint16,
+        );
 
         for draw_info in &render_data.draw_info {
             renderpass.draw_indexed(
@@ -199,12 +255,10 @@ impl RenderManager {
         Some(commands)
     }
 
-    fn get_render_data(&self, model: &Model,) -> &RefCell<Option<RenderData>> {
+    fn get_render_data(&self, model: &Model) -> &RefCell<Option<RenderData>> {
         let mut value = self.render_data.borrow_mut();
-        
-        value.get_or_insert_with(|| {
-            RenderData::build(&self.device, model)
-        });
+
+        value.get_or_insert_with(|| RenderData::build(&self.device, model));
 
         &self.render_data
     }
@@ -251,7 +305,13 @@ impl RenderManager {
                     polygon_mode: wgpu::PolygonMode::Fill,
                     ..Default::default()
                 },
-                depth_stencil: None,
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: Self::DEPTH_FORMAT,
+                    depth_write_enabled: true,
+                    depth_compare: wgpu::CompareFunction::Less, // 1.
+                    stencil: wgpu::StencilState::default(),     // 2.
+                    bias: wgpu::DepthBiasState::default(),
+                }),
                 multisample: wgpu::MultisampleState {
                     count: 1,
                     mask: !0,

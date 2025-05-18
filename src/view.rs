@@ -1,5 +1,6 @@
 use crate::model::Model;
 use crate::render::render_manager::RenderManager;
+use std::cell::RefCell;
 use std::sync::Arc;
 use winit::window::Window;
 
@@ -9,16 +10,18 @@ pub struct View {
     device: Arc<wgpu::Device>,
     queue: wgpu::Queue,
     size: winit::dpi::PhysicalSize<u32>,
-    surface: wgpu::Surface<'static>,
+    surface: Box<wgpu::Surface<'static>>,
     surface_format: wgpu::TextureFormat,
-    render_manager: RenderManager,
+    surface_config: RefCell<Option<wgpu::SurfaceConfiguration>>,
+    render_manager: Box<RenderManager>,
 }
 
 impl View {
     pub async fn create(window: Window) -> Option<View> {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
         let window_ptr = Arc::new(window);
-        let surface = create_surface(&instance, &window_ptr)?;
+        let surface_ptr = create_surface(&instance, &window_ptr)?;
+        let surface = Box::new(surface_ptr);
         let adapter = create_default_adapter(&instance).await?;
         let (device, queue) = request_default_device(&adapter).await?;
         let size = window_ptr.inner_size();
@@ -26,7 +29,7 @@ impl View {
         let surface_format = cap.formats[0];
         let render_counter = 0;
         let device_ref = Arc::new(device);
-        let render_manager = RenderManager::new(&device_ref);
+        let render_manager = Box::new(RenderManager::new(&device_ref));
 
         let view = View {
             render_counter,
@@ -36,13 +39,20 @@ impl View {
             size,
             surface,
             surface_format,
+            surface_config: RefCell::new(None),
             render_manager,
         };
 
         // Configure surface for the first time
         view.configure_surface();
+        view.render_manager
+            .create_depth_texture(&view.surface_config);
 
         Some(view)
+    }
+
+    pub fn destroy(&self) {
+        self.render_manager.destroy();
     }
 
     pub fn request_redraw(&self) {
@@ -53,6 +63,8 @@ impl View {
         self.size = new_size;
         // reconfigure the surface
         self.configure_surface();
+        self.render_manager
+            .create_depth_texture(&self.surface_config);
     }
 
     pub fn render(&mut self, model: &Option<Model>) {
@@ -102,6 +114,7 @@ impl View {
             present_mode: wgpu::PresentMode::AutoVsync,
         };
         self.surface.configure(&self.device, &surface_config);
+        self.surface_config.replace(Some(surface_config));
     }
 }
 
